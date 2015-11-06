@@ -1,0 +1,308 @@
+--Original programming by
+--Marcos Teixeira de Mello
+--Brazil, Nov 2015
+--
+--mtmello2003@yahoo.com.br
+
+--Feel free to modify this code but always
+--give me the credits for the original
+--development
+
+
+--Lua language
+--Watchmaker Android App
+
+var_seta={42, 67, 92, 117}
+var_ms_vidas=3
+var_ms_pontos=0
+var_azul="0015a8"
+var_level="1"
+
+--define o tempo entre os movimentos no modo demo
+var_max_delay=20
+var_max_delay_disco=40
+var_max_delay_tiro=5
+var_max_delay_tiro_disco=15
+
+var_mode=1
+var_demo=1
+var_random = 1
+var_gameover=0
+
+--variaveis da nave
+var_nave={-83, -45, -7}
+var_ms_nave_pos=1
+var_move=1
+
+--variaveis do disco voador
+var_disco={-83, -45, -7}
+var_ms_disco_pos=1
+var_ms_disco_pos_ant=0
+var_move_disco=1
+var_ms_disco_visivel=100
+
+--variaveis do tiro
+var_ms_tiro={{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0}}
+var_tiro_linha=1
+var_tiro_disco_linha=1
+var_ms_tiro_pos=8
+var_ms_tiro_disco_pos=0
+var_ms_atirou=0
+var_ms_disco_atirou=0
+var_ms_delay=0
+var_ms_delay_disco=0
+var_ms_delay_tiro=0
+var_ms_delay_tiro_disco=0
+
+
+
+--nave atirando
+function atira()
+  var_ms_atirou=1
+end
+
+--muda as funçoes 
+function mode()
+var_mode=var_mode+1
+wm_transition('Fade')
+if var_mode==5 then 
+  var_mode=1
+end
+--habilita o modo demo quando esta no relogio de horas.
+if var_mode==1 then
+  var_demo = 1
+  var_ms_max_delay_disco=40
+  var_max_delay_tiro_disco=15
+  var_gameover=0
+elseif var_mode ==4 then
+  var_demo=0
+  var_gameover=0
+  var_ms_atirou=0
+  var_ms_disco_atirou=0
+  var_ms_pontos=0
+  var_ms_vidas=3
+  zeratiro()
+  zeratiro_disco()
+end
+end
+
+function on_millisecond() 
+--movimenta a nave sozinha
+if var_gameover==1 then
+  --fim de jogo
+else
+	if var_demo == 1 then 
+	  var_ms_delay=var_ms_delay+1 
+	  var_ms_delay_disco = var_ms_delay_disco + 1 
+	  if var_ms_delay > var_max_delay then
+		var_ms_delay=0
+		move_nave()
+	  end
+	  if var_ms_delay_disco > var_max_delay_disco then
+		var_ms_delay_disco = 0
+		--so movimenta o disco se não atirou
+		if var_ms_atirou == 0 then
+		  move_disco()
+		end
+	  end
+	end
+	--atira
+	if var_ms_atirou==1 then
+	  var_ms_delay_tiro=var_ms_delay_tiro+1
+	  if var_ms_delay_tiro > var_max_delay_tiro then
+		var_ms_delay_tiro=0
+		var_ms_tiro[var_ms_nave_pos][var_ms_tiro_pos] = 100
+		--interceptou um tiro do disco?
+		if var_ms_nave_pos==var_ms_disco_pos and var_ms_tiro_disco_pos>=var_ms_tiro_pos then
+		  apagadisco()
+		  acertou_tiro(1)
+		  zeratiro_disco()
+		  zeratiro()
+		  var_ms_atirou=0
+		  var_ms_tiro_pos=8
+		  var_ms_tiro_disco_pos=0		  		  
+		else		
+		  var_ms_tiro_pos = var_ms_tiro_pos-1
+		  if var_ms_tiro_pos == -1 then
+		    acertou_tiro()
+		    var_ms_atirou=0
+		    var_ms_tiro_pos=8
+		    zeratiro()
+		    --se o disco atirou, esta na mira da nave porém deu tempo, limpa o rastro
+		    if var_ms_disco_atirou==1 and var_ms_disco_pos==var_ms_nave_pos then
+		  	  zeratiro_disco()
+		    end
+		  end
+	    end
+	  end
+	end
+	--disco atira
+	if var_ms_disco_atirou==1 then
+	  var_ms_disco_visivel=100
+	  var_ms_delay_tiro_disco=var_ms_delay_tiro_disco+1
+	  if var_ms_delay_tiro_disco > var_max_delay_tiro_disco then
+		var_ms_delay_tiro_disco=0
+		var_ms_tiro[var_ms_disco_pos][var_ms_tiro_disco_pos] = 100
+		var_ms_tiro_disco_pos = var_ms_tiro_disco_pos + 1
+		--verifica se o disco acertou a nave ou chegou ao fim da linha
+		if var_ms_tiro_disco_pos == 9 then
+		  if var_demo==0 then
+			wm_vibrate(40,1)
+		  end
+		  var_ms_vidas=var_ms_vidas-1
+		  if var_ms_vidas==0 then
+			var_gameover=1
+		  end
+		  var_ms_disco_atirou=0
+		  var_ms_tiro_disco_pos=0
+		  zeratiro_disco()
+		end
+	  end
+	end
+end
+--movimenta o disco
+if var_demo == 0 and var_ms_atirou == 0 and var_ms_disco_atirou == 0 then
+  var_ms_disco_visivel=100
+  var_ms_delay_disco = var_ms_delay_disco+1
+  if var_ms_delay_disco > var_max_delay_disco then
+    var_ms_disco_pos_ant=var_ms_disco_pos
+	move_disco(1)
+	var_ms_delay_disco=0
+  end
+end
+end
+
+--apaga o disco
+function apagadisco()
+zeratiro_disco() 
+var_ms_disco_visivel=0
+for i=1,3 do
+ while var_ms_delay_disco < var_max_delay_disco do
+    var_ms_delay_disco=var_ms_delay_disco+1
+  end
+  var_ms_delay_disco=0
+end
+end
+
+
+
+--acertou o tiro? vai aumentando a dificuldade
+function acertou_tiro(x)
+  if var_ms_nave_pos == var_ms_disco_pos then
+    if var_ms_disco_atirou==1 then
+      var_ms_pontos=var_ms_pontos+15
+	else 
+	  var_ms_pontos=var_ms_pontos+10
+	end
+	if var_demo==0 then 
+	  wm_vibrate(20, 1)
+	end
+	if var_ms_pontos > 300 then 
+	  var_max_delay_disco=10
+	  var_level="1 - 2 - 3 - 4"
+	else
+	if var_ms_pontos > 200 then 
+	  var_max_delay_disco=20
+	  var_max_delay_tiro_disco=5
+	  var_level="1 - 2 - 3"
+	else 
+	if var_ms_pontos > 100 then 
+	  var_max_delay_disco=30
+	  var_max_delay_tiro_disco=10
+	  var_level="1 - 2"
+	end
+	end
+	end
+  else 
+    if x~= 1 then
+	  var_ms_pontos=var_ms_pontos-5
+	  if var_ms_pontos<0 then 
+	    var_ms_pontos=0 
+	  end
+	end
+  end
+end
+
+--elimina o rastro do tiro
+function zeratiro()
+  while var_ms_delay_tiro < var_max_delay_tiro do
+    var_ms_delay_tiro=var_ms_delay_tiro+1
+  end
+  var_ms_delay_tiro=0
+  for i =1,8 do
+    var_ms_tiro[var_ms_nave_pos][i]=0
+  end
+end
+
+--elimina o rastro do tiro do disco
+function zeratiro_disco()
+  while var_ms_delay_tiro_disco < var_max_delay_tiro_disco do
+    var_ms_delay_tiro_disco=var_ms_delay_tiro_disco+1
+  end
+  var_ms_delay_tiro_disco=0
+  for i =1,8 do
+    var_ms_tiro[var_ms_disco_pos][i]=0
+  end
+end
+
+--movimenta a nave
+function move_nave()
+--se for no jogo, só movimenta
+if var_mode == 4 and var_ms_atirou==0 then
+  var_ms_nave_pos=var_ms_nave_pos + var_move
+end
+if var_demo==1 and var_ms_atirou==0 then
+	aleatorio(3)
+	--se for no demo, gera uma ação aleatoria
+	if var_random == 1 then
+	  var_move=1
+	  var_ms_nave_pos=var_ms_nave_pos + 1
+	end
+	if var_random == 2 then
+	  var_move=-1
+	  var_ms_nave_pos=var_ms_nave_pos - 1
+	end
+	if var_random == 3 then
+	  var_ms_atirou= 1
+	end
+end
+--movimenta sempre sequencialmente a nave
+if var_ms_nave_pos>=3 then
+  var_move=-1
+  var_ms_nave_pos=3
+end
+if var_ms_nave_pos<=1 then
+  var_move=1
+  var_ms_nave_pos=1
+end
+end
+
+
+--movimenta o disco voador
+function move_disco(xvar)
+if var_demo == 1 then
+  var_ms_disco_pos = var_ms_disco_pos + var_move_disco
+  if var_ms_disco_pos==3 then
+	var_move_disco=-1
+  end
+  if var_ms_disco_pos==1 then
+	var_move_disco=1
+  end
+end
+--se nao é demo, sorteia nova posicao para o disco
+if xvar == 1 and var_ms_disco_atirou == 0 then
+  while var_ms_disco_pos == var_ms_disco_pos_ant do
+  aleatorio(3)
+  var_ms_disco_pos = var_random
+  --sempre que o disco se move, atira!
+  end
+  var_ms_disco_atirou=1
+end  
+end
+
+
+
+--gera um numero aleatorio 1 a x
+function aleatorio(x)
+  var_random = math.random(x)
+end
