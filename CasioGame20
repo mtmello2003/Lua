@@ -1,22 +1,21 @@
---Original programming by
---Marcos Teixeira de Mello
---Brazil, Nov 2015
 --
---mtmello2003@yahoo.com.br
+-- Original programming by
+-- Marcos Teixeira de Mello
+-- Brazil, Nov 2015
+--
+-- Version 1.0
+--
+-- mtmello2003@yahoo.com.br
 
---Feel free to modify this code but always
---give me the credits for the original
---development
-
-
---Lua language
---Watchmaker Android App
+-- Lua language
+-- Watchmaker Android App
 
 var_seta={42, 67, 92, 117}
 var_ms_vidas=3
 var_ms_pontos=0
 var_azul="0015a8"
 var_level="1"
+var_ms_govisivel=0
 
 --define o tempo entre os movimentos no modo demo
 var_max_delay=20
@@ -70,9 +69,15 @@ if var_mode==5 then
 end
 --habilita o modo demo quando esta no relogio de horas.
 if var_mode==1 then
-  var_demo = 1
   var_ms_max_delay_disco=40
   var_max_delay_tiro_disco=15
+  var_ms_atirou=0
+  var_ms_disco_atirou=0
+  var_level="1"
+  zeratiro_disco()
+  zeratiro()
+  var_demo = 1
+  var_ms_govisivel=0
   var_gameover=0
 elseif var_mode ==4 then
   var_demo=0
@@ -90,8 +95,13 @@ function on_millisecond()
 --movimenta a nave sozinha
 if var_gameover==1 then
   --fim de jogo
+  var_ms_govisivel=100
 else
 	if var_demo == 1 then 
+	  --não permite o disco travar
+	  if var_ms_disco_pos > 3 or var_ms_disco_pos <1 then 
+	    var_ms_disco_pos=1 
+	  end
 	  var_ms_delay=var_ms_delay+1 
 	  var_ms_delay_disco = var_ms_delay_disco + 1 
 	  if var_ms_delay > var_max_delay then
@@ -103,6 +113,7 @@ else
 		var_ms_delay_disco = 0
 		--so movimenta o disco se não atirou
 		if var_ms_atirou == 0 and var_ms_disco_atirou==0 then
+		  var_ms_disco_pos_ant=var_ms_disco_pos
 		  move_disco()
 		end
 	  end
@@ -116,9 +127,9 @@ else
 		--interceptou um tiro do disco?
 		if var_ms_nave_pos==var_ms_disco_pos and var_ms_tiro_disco_pos>=var_ms_tiro_pos then
           var_ms_disco_visivel=0
+		  acertou_tiro(1)
 		  var_ms_atirou=0
 		  var_ms_disco_atirou=0	
-		  acertou_tiro(1)
 		  zeratiro_disco()
 		  var_ms_tiro_pos=8
 		  var_ms_tiro_disco_pos=0
@@ -135,6 +146,8 @@ else
 		    --se o disco atirou, esta na mira da nave porém deu tempo, limpa o rastro
 		    if var_ms_disco_atirou==1 and var_ms_disco_pos==var_ms_nave_pos then
 		  	  zeratiro_disco()
+			  var_ms_disco_atirou=0
+			  var_ms_tiro_disco_pos=0
 		    end
 		  end
 	    end
@@ -164,7 +177,7 @@ else
 	end
 end
 --movimenta o disco
-if var_demo == 0 and var_ms_atirou == 0 and var_ms_disco_atirou == 0 and var_ms_disco_visivel==100 then
+if var_gameover==0 and var_demo == 0 and var_ms_atirou == 0 and var_ms_disco_atirou == 0 and var_ms_disco_visivel==100 then
   var_ms_delay_disco = var_ms_delay_disco+1
   if var_ms_delay_disco > var_max_delay_disco then
     var_ms_disco_pos_ant=var_ms_disco_pos
@@ -236,7 +249,7 @@ end
 --movimenta a nave
 function move_nave()
 --se for no jogo, só movimenta
-if var_mode == 4 and var_ms_atirou==0 then
+if var_mode == 4 and var_ms_atirou==0 and var_gameover==0 then
   var_ms_nave_pos=var_ms_nave_pos + var_move
 end
 if var_demo==1 and var_ms_atirou==0 then
@@ -270,10 +283,10 @@ end
 function move_disco(xvar)
 if var_demo == 1 then
   var_ms_disco_pos = var_ms_disco_pos + var_move_disco
-  if var_ms_disco_pos==3 then
+  if var_ms_disco_pos>=3 then
 	var_move_disco=-1
   end
-  if var_ms_disco_pos==1 then
+  if var_ms_disco_pos<=1 then
 	var_move_disco=1
   end
 end
